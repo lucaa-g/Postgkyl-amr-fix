@@ -32,6 +32,29 @@ def _update(i, data, fig, offsets, kwargs):
   return(im)
 #end
 
+def _update_amr(i, data, fig, kwargs):
+  fig.clear()
+  kwargs['figure'] = fig
+
+  for dat in data[i]:
+    kwargs['title'] = ''
+    if not kwargs['notitle']:
+      if dat.ctx['frame'] is not None:
+        kwargs['title'] = kwargs['title'] + 'F: {:d} '.format(dat.ctx['frame'])
+      #end
+      if dat.ctx['time'] is not None:
+        kwargs['title'] = kwargs['title'] + 'T: {:.4e}'.format(dat.ctx['time'])
+      #end
+    #end
+    if kwargs['arg'] is not None:
+      im = gplot(dat, kwargs['arg'], **kwargs)
+    else:
+      im = gplot(dat, **kwargs)
+    #end
+  #end
+  return(im)
+#end
+
 @click.command()
 @click.option('--use', '-u', default=None,
               help="Specify a tag to plot.")
@@ -155,6 +178,7 @@ def _update(i, data, fig, offsets, kwargs):
               help="Save individual frames as PNGS instead of an animation")
 @click.option('--figsize',
               help="Comma-separated values for x and y size.")
+@click.option('--amr', is_flag=True)
 @click.pass_context
 def animate(ctx, **kwargs):
   r"""Animate the actively loaded dataset and show resulting plots in a
@@ -275,6 +299,33 @@ def animate(ctx, **kwargs):
         kwargs['show'] = False # do not show in this case
       #end
     #end
+  elif kwargs['amr']:
+    dataList = []
+    tagList = np.array(list(data.tagIterator()))
+    tag_idx = np.argsort(tagList.astype(float))
+    sortedTagList = tagList[tag_idx]
+    for tag in sortedTagList:
+      dataList.append(list(data.iterator(tag=tag)))
+    figs.append(plt.figure(figsize=figsize))
+    if not kwargs['saveframes']:
+      anims.append(FuncAnimation(figs[-1], _update_amr,
+                                 int(np.nanmin((minSize,len(dataList)))),
+                                 fargs=(dataList,figs[-1],kwargs),
+                                 interval=kwargs['interval'],blit=False))
+    
+      fName = 'anim.mp4'
+      if kwargs['saveas']:
+        fName = str(kwargs['saveas'])
+      if kwargs['save'] or kwargs['saveas']:
+        anims[-1].save(fName, writer='ffmpeg',
+                       fps=kwargs['fps'], dpi=kwargs['dpi'])
+    else:
+      for i in range(int(np.nanmin((minSize, len(dataList))))):
+        _update_amr(i, dataList, figs[-1], kwargs)
+        plt.savefig('{:s}_{:d}.png'.format(kwargs['saveframes'], i),
+                    dpi=kwargs['dpi'])
+      kwargs['show'] = False
+      
   else:
     dataList = list(data.iterator(tag=kwargs['use']))
     if setFigure:
