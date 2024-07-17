@@ -8,8 +8,6 @@ from postgkyl.commands.util import verb_print
 @click.command()
 @click.option('--use', '-u', default=None,
               help="Specify the tag to plot.")
-@click.option('--figure', '-f', default=None,
-              help="Specify figure to plot in; either number or 'dataset'.")
 @click.option('--squeeze', is_flag=True,
               help="Squeeze the components into one panel.")
 @click.option('--subplots', '-b', is_flag=True,
@@ -94,8 +92,6 @@ from postgkyl.commands.util import verb_print
               help="Set limits for the z-coordinate (lower,upper).")
 @click.option('--relax', is_flag=True,
               help="Relax the stringent x axis limits for 1D plots.")
-@click.option('--globalrange', '-r', is_flag=True,
-              help="Make uniform extends across datasets.")
 @click.option('--cutoffglobalrange', '-cogr', default=None, type=click.FLOAT,
               help="Set custom limit for uniform across datasets")
 @click.option('--legend/--no-legend', default=True,
@@ -136,14 +132,13 @@ from postgkyl.commands.util import verb_print
               help="Turn colormap to jet for comparison with literature.")
 @click.option('--cmap', type=click.STRING, default=None,
               help="Override default colormap with a valid matplotlib cmap.")
-@click.option('--amr', is_flag=True, default=False,
-              help="Smooths out z scale for amr data and automatically plots on one figure")
 @click.pass_context
-def plot(ctx, **kwargs):
+def plotamr(ctx, **kwargs):
   """Plot active datasets, optionally displaying the plot and/or saving
   it to PNG files. Plot labels can use a sub-set of LaTeX math
   commands placed between dollar ($) signs.
   """
+  
   verb_print(ctx, 'Starting plot')
 
   kwargs['rcParams'] = ctx.obj['rcParams']
@@ -175,9 +170,6 @@ def plot(ctx, **kwargs):
     for dat in ctx.obj['data'].iterator(kwargs['use']):
       kwargs['num_axes'] = kwargs['num_axes'] + dat.get_num_comps()
     #end
-    if kwargs['figure'] is None:
-      kwargs['figure'] = 0
-    #end
   #end
 
   if kwargs['xlim']:
@@ -193,12 +185,10 @@ def plot(ctx, **kwargs):
     kwargs['zmax'] = float(kwargs['zlim'].split(',')[1])
   #end
 
-  dataset_fignum = False
-  if kwargs['figure'] == 'dataset' or kwargs['figure'] == 'set' or kwargs['figure'] == 's':
-    dataset_fignum = True
   #end
 
-  if kwargs['globalrange'] or (kwargs['amr'] and kwargs['cutoffglobalrange'] is None):
+  #built in global range function to smooth out amr z scale
+  if kwargs['cutoffglobalrange'] is None:
     vmin = float('inf')
     vmax = float('-inf')
     for dat in ctx.obj['data'].iterator(kwargs['use']):
@@ -210,17 +200,12 @@ def plot(ctx, **kwargs):
         vmax = np.nanmax(val)
       #end
     #end
-
     if kwargs['zmin'] is None:
       kwargs['zmin'] = vmin
     #end
     if kwargs['zmax'] is None:
       kwargs['zmax'] = vmax
     #end
-  #end
-      
-  if kwargs['amr'] and kwargs['contour'] and kwargs['clevels'] is None:
-    kwargs['clevels'] = f"{kwargs['zmin']}:{kwargs['zmax']}:10"
 
   if kwargs['cutoffglobalrange']:
     v_extrema = np.array([])
@@ -230,37 +215,33 @@ def plot(ctx, **kwargs):
       lmax = np.nanmax(val)
       v_extrema = np.append(v_extrema, lmin)
       v_extrema = np.append(v_extrema, lmax)
-    #end
+      #end
     v_extrema = np.sort(v_extrema)
     vmax = np.percentile(v_extrema, 100 * kwargs['cutoffglobalrange'])
     vmin = np.percentile(v_extrema, 100 * (1 - kwargs['cutoffglobalrange']))
 
     if kwargs['zmax'] is None:
       kwargs['zmax'] = vmax
-    #end
     if kwargs['zmin'] is None:
       kwargs['zmin'] = vmin
-    #end
-  #end
-        
 
+  if kwargs['contour'] and kwargs['clevels'] is None:
+    kwargs['clevels'] = f"{kwargs['zmin']}:{kwargs['zmax']}:10"
+    
 
   file_name = ''
 
   # --------------------------------------------------------------------
   # Loop over all the datasets
   for i, dat in ctx.obj['data'].iterator(kwargs['use'], enum=True):
-    if dataset_fignum and not kwargs['amr']:
-      kwargs['figure'] = int(i)
-    #end
-    if kwargs['amr']:
-      kwargs['figure'] = 0
-    #end
     if ctx.obj['data'].getNumDatasets() > 1 or kwargs['forcelegend']:
       label = dat.get_label()
     else:
       label = ''
     #end
+
+    #Sets default figure to 0 for all amr plots
+    kwargs['figure'] = 0
 
     # Plot -------------------------------------------------------------
     gplot(dat, args, label_prefix=label, **kwargs)
