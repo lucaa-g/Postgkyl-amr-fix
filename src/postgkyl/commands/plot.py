@@ -198,9 +198,14 @@ def plot(ctx, **kwargs):
     dataset_fignum = True
   #end
 
-  if kwargs['globalrange'] or (kwargs['amr'] and kwargs['cutoffglobalrange'] is None):
+  if kwargs['amr'] and kwargs['cutoffglobalrange'] is None:
+    kwargs['globalrange'] = True
+  #end
+
+  if kwargs['globalrange'] or kwargs['cutoffglobalrange']:
     vmin = float('inf')
     vmax = float('-inf')
+    v_extrema = np.array([])
     for dat in ctx.obj['data'].iterator(kwargs['use']):
       val = dat.get_values() * kwargs['zscale']
       if vmin > np.nanmin(val):
@@ -209,8 +214,17 @@ def plot(ctx, **kwargs):
       if vmax < np.nanmax(val):
         vmax = np.nanmax(val)
       #end
+      v_extrema = np.append(v_extrema, np.nanmin(val))
+      v_extrema = np.append(v_extrema, np.nanmax(val))
     #end
-
+      
+    v_extrema = np.sort(v_extrema)
+    if kwargs['cutoffglobalrange']:
+      boundary = 100 * (1 - kwargs['cutoffglobalrange']) / 2
+      vmax = np.percentile(v_extrema, 100 - boundary)
+      vmin = np.percentile(v_extrema, boundary)
+    #end
+      
     if kwargs['zmin'] is None:
       kwargs['zmin'] = vmin
     #end
@@ -218,29 +232,10 @@ def plot(ctx, **kwargs):
       kwargs['zmax'] = vmax
     #end
   #end
-      
+  
+
   if kwargs['amr'] and kwargs['contour'] and kwargs['clevels'] is None:
     kwargs['clevels'] = f"{kwargs['zmin']}:{kwargs['zmax']}:10"
-
-  if kwargs['cutoffglobalrange']:
-    v_extrema = np.array([])
-    for dat in ctx.obj['data'].iterator(kwargs['use']):
-      val = dat.get_values() * kwargs['zscale']
-      lmin = np.nanmin(val)
-      lmax = np.nanmax(val)
-      v_extrema = np.append(v_extrema, lmin)
-      v_extrema = np.append(v_extrema, lmax)
-    #end
-    v_extrema = np.sort(v_extrema)
-    vmax = np.percentile(v_extrema, 100 * kwargs['cutoffglobalrange'])
-    vmin = np.percentile(v_extrema, 100 * (1 - kwargs['cutoffglobalrange']))
-
-    if kwargs['zmax'] is None:
-      kwargs['zmax'] = vmax
-    #end
-    if kwargs['zmin'] is None:
-      kwargs['zmin'] = vmin
-    #end
   #end
         
 

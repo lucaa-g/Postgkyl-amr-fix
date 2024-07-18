@@ -8,33 +8,10 @@ import postgkyl.output.plot as gplot
 import postgkyl.data.select as select
 from postgkyl.commands.util import verb_print
 
-def _update(i, data, fig, offsets, kwargs):
+def _update(i, data, fig, kwargs):
   fig.clear()
   kwargs['figure'] = fig
 
-  for n in offsets:
-    dat = data[i+n]
-    kwargs['title'] = ''
-    if not kwargs['notitle']:
-      if dat.ctx['frame'] is not None:
-        kwargs['title'] = kwargs['title'] + 'F: {:d} '.format(dat.ctx['frame'])
-      #end
-      if dat.ctx['time'] is not None:
-        kwargs['title'] = kwargs['title'] + 'T: {:.4e}'.format(dat.ctx['time'])
-      #end
-    #end
-    if kwargs['arg'] is not None:
-      im = gplot(dat, kwargs['arg'], **kwargs)
-    else:
-      im = gplot(dat, **kwargs)
-    #end
-  #end
-  return(im)
-#end
-
-def _update_amr(i, data, fig, kwargs):
-  fig.clear()
-  kwargs['figure'] = fig
 
   for dat in data[i]:
     kwargs['title'] = ''
@@ -51,7 +28,7 @@ def _update_amr(i, data, fig, kwargs):
     else:
       im = gplot(dat, **kwargs)
     #end
-  #end
+      
   return(im)
 #end
 
@@ -140,6 +117,8 @@ def _update_amr(i, data, fig, kwargs):
               help="Set limits for the y-coordinate (lower,upper).")
 @click.option('--zlim', default=None, type=click.STRING,
               help="Set limits for the z-coordinate (lower,upper).")
+@click.option('--cutoffglobalrange', '-cogr', default=None, type=click.FLOAT,
+              help="Specify middle percentile of data extrema to set y/z limits to")
 @click.option('--legend/--no-legend', default=True,
               help="Show legend.")
 @click.option('--force-legend', 'forcelegend', is_flag=True,
@@ -206,6 +185,7 @@ def animate(ctx, **kwargs):
   if not kwargs['float']:
     vmin = float('inf')
     vmax = float('-inf')
+    v_extrema = np.array([])
     for dat in ctx.obj['data'].iterator(kwargs['use']):
       num_dims = dat.get_num_dims()
       if num_dims == 1:
@@ -217,6 +197,13 @@ def animate(ctx, **kwargs):
         vmin = np.nanmin(val)
       if vmax < np.nanmax(val):
         vmax = np.nanmax(val)
+      #end
+      v_extrema = np.append(v_extrema, np.nanmin(val))
+      v_extrema = np.append(v_extrema, np.nanmax(val))
+      if kwargs['cutoffglobalrange']:
+        boundary = 100 * (1 - kwargs['cutoffglobalrange']) / 2
+        vmax = np.percentile(v_extrema, 100 - boundary)
+        vmin = np.percentile(v_extrema, boundary)
       #end
     #end
 
@@ -247,35 +234,32 @@ def animate(ctx, **kwargs):
                int(kwargs['figsize'].split(',')[1]))
   #end
 
-  offsets = [0]
-  tagIterator = list(data.tagIterator(kwargs['use']))
+  #tagIterator = list(data.tagIterator(kwargs['use']))
   setFigure = False
   minSize = np.NAN
 
   if kwargs['grouptags']:
     for tag in data.tagIterator(kwargs['use']):
       numDatasets = int(data.getNumDatasets(tag=tag))
-      offsets.append(numDatasets)
       minSize = int(np.nanmin((minSize, numDatasets)))
     #end
-    offsets.pop()
-    tagIterator = list((kwargs['use'],))
+
+    tagIterator = list(data.tagIterator(kwargs['use']))
     kwargs['legend'] = True
     setFigure = True
     figNum = int(0)
 
     for tag in tagIterator:
-      dataList = list(data.iterator(tag=tag))
-      if setFigure:
-        figs.append(plt.figure(figNum, figsize=figsize))
-      else:
-        figs.append(plt.figure(figsize=figsize))
+      dataList = []
+      for dat in data.iterator(tag=tag):
+        dataList.append([dat])
+      figs.append(plt.figure(figNum, figsize=figsize))
+      figNum += 1
       #end
       if not kwargs['saveframes']:
         anims.append(FuncAnimation(figs[-1], _update,
                                    int(np.nanmin((minSize, len(dataList)))),
-                                   fargs=(dataList, figs[-1],
-                                          offsets, kwargs),
+                                   fargs=(dataList, figs[-1], kwargs),
                                    interval=kwargs['interval'], blit=False))
 
         if tag is not None:
@@ -292,7 +276,7 @@ def animate(ctx, **kwargs):
         #end
       else:
         for i in range(int(np.nanmin((minSize, len(dataList))))):
-          _update(i, dataList, figs[-1], offsets, kwargs)
+          _update(i, dataList, figs[-1], kwargs)
           plt.savefig('{:s}_{:d}.png'.format(kwargs['saveframes'], i),
                       dpi=kwargs['dpi'])
         #end
@@ -300,34 +284,45 @@ def animate(ctx, **kwargs):
       #end
     #end
   elif kwargs['amr']:
-    dataList = []
+
+    kwargs['amr'] = False
+    
     tagList = np.array(list(data.tagIterator()))
     tag_idx = np.argsort(tagList.astype(float))
     sortedTagList = tagList[tag_idx]
+
+    dataList = []
     for tag in sortedTagList:
       dataList.append(list(data.iterator(tag=tag)))
+    #end
     figs.append(plt.figure(figsize=figsize))
     if not kwargs['saveframes']:
-      anims.append(FuncAnimation(figs[-1], _update_amr,
+      anims.append(FuncAnimation(figs[-1], _update,
                                  int(np.nanmin((minSize,len(dataList)))),
-                                 fargs=(dataList,figs[-1],kwargs),
+                                 fargs=(dataList,figs[-1], kwargs),
                                  interval=kwargs['interval'],blit=False))
     
       fName = 'anim.mp4'
       if kwargs['saveas']:
         fName = str(kwargs['saveas'])
+      #end
       if kwargs['save'] or kwargs['saveas']:
         anims[-1].save(fName, writer='ffmpeg',
                        fps=kwargs['fps'], dpi=kwargs['dpi'])
+      #end
     else:
       for i in range(int(np.nanmin((minSize, len(dataList))))):
-        _update_amr(i, dataList, figs[-1], kwargs)
+        _update(i, dataList, figs[-1], kwargs)
         plt.savefig('{:s}_{:d}.png'.format(kwargs['saveframes'], i),
                     dpi=kwargs['dpi'])
+      #end
       kwargs['show'] = False
+    #end
       
   else:
-    dataList = list(data.iterator(tag=kwargs['use']))
+    dataList = []
+    for dat in data.iterator(tag=kwargs['use']):
+      dataList.append([dat])
     if setFigure:
       figs.append(plt.figure(figNum, figsize=figsize))
     else:
@@ -336,8 +331,7 @@ def animate(ctx, **kwargs):
     if not kwargs['saveframes']:
       anims.append(FuncAnimation(figs[-1], _update,
                                  int(np.nanmin((minSize, len(dataList)))),
-                                 fargs=(dataList, figs[-1],
-                                        offsets, kwargs),
+                                 fargs=(dataList, figs[-1], kwargs),
                                  interval=kwargs['interval'], blit=False))
 
       fName = 'anim.mp4'
@@ -350,7 +344,7 @@ def animate(ctx, **kwargs):
       #end
     else:
       for i in range(int(np.nanmin((minSize, len(dataList))))):
-        _update(i, dataList, figs[-1], offsets, kwargs)
+        _update(i, dataList, figs[-1], kwargs)
         plt.savefig('{:s}_{:d}.png'.format(kwargs['saveframes'], i),
                     dpi=kwargs['dpi'])
       #end

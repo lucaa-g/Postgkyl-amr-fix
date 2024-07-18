@@ -30,7 +30,6 @@ from .mhd import mhd
 from .parrotate import parrotate
 from .perprotate import perprotate
 from .plot import plot
-from .plotamr import plotamr
 from .pr import pr
 from .recovery import recovery
 from .relchange import relchange
