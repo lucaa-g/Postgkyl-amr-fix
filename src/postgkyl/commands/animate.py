@@ -158,6 +158,7 @@ def _update(i, data, fig, kwargs):
 @click.option('--figsize',
               help="Comma-separated values for x and y size.")
 @click.option('--amr', is_flag=True)
+@click.option('--nocolorbar', is_flag=True)
 @click.pass_context
 def animate(ctx, **kwargs):
   r"""Animate the actively loaded dataset and show resulting plots in a
@@ -188,7 +189,7 @@ def animate(ctx, **kwargs):
     vmin = float('inf')
     vmax = float('-inf')
     v_extrema = np.array([])
-    for dat in ctx.obj['data'].iterator(kwargs['use']):
+    for dat in data.iterator(kwargs['use']):
       num_dims = dat.get_num_dims()
       if num_dims == 1:
         val = dat.get_values()*kwargs['yscale']
@@ -258,9 +259,10 @@ def animate(ctx, **kwargs):
       dataList = []
       for dat in data.iterator(tag=tag):
         dataList.append([dat])
+      #end
       figs.append(plt.figure(figNum, figsize=figsize))
       figNum += 1
-      #end
+      
       if not kwargs['saveframes']:
         anims.append(FuncAnimation(figs[-1], _update,
                                    int(np.nanmin((minSize, len(dataList)))),
@@ -290,21 +292,42 @@ def animate(ctx, **kwargs):
     #end
   elif kwargs['amr']:
 
-    frame_list = np.array([])
-    for dat in data.iterator():
-      if not np.isin(dat.ctx['frame'], frame_list):
-        frame_list = np.append(frame_list, dat.ctx['frame'])
-    frame_idx = np.argsort(frame_list)
-    sorted_frame_list = frame_list[frame_idx]
+    files = [dat._file_name for dat in data.iterator()]
+    
+    short_file = min(files, key=len)
+    num_frame_idx = np.inf
+    for i in range(len(files)):
+        for j in range(len(short_file)):
+            if short_file[j] != files[i][j] and j < num_frame_idx:
+                num_frame_idx = j
+            #end
+        #end
+    #end
+                
+    frame_list = []
+    for f in files:
+      f = f.split('.gkyl')[0]
+      frame = f[num_frame_idx:].split('_')[0]
+      frame_list.append(int(frame))
+    #end
+    
+
+    for i, dat in data.iterator(enum=True):
+      dat.ctx['frame'] = frame_list[i]
+    #end
+    sorted_frame_list = np.unique(np.sort(frame_list))
+    
 
     dataList = []
     for frame in sorted_frame_list:
       frameDataList = [dat for dat in data.iterator() if dat.ctx['frame'] == frame]
       dataList.append(frameDataList)
+    #end
     
     figs.append(plt.figure(figsize=figsize))
-    if not kwargs['color']:
+    if (not kwargs['color'] and dataList[0][0].get_num_dims() == 1) or (kwargs['nocolorbar'] and dataList[0][0].get_num_dims() == 2):
       kwargs['color'] = 'tab:blue'
+    #end
     if not kwargs['saveframes']:
       anims.append(FuncAnimation(figs[-1], _update,
                                  int(np.nanmin((minSize,len(dataList)))),
