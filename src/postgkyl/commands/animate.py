@@ -169,6 +169,8 @@ def animate(ctx, **kwargs):
   verb_print(ctx, 'Starting animate')
   data = ctx.obj['data']
 
+
+
   if kwargs['xlim']:
     kwargs['xmin'] = float(kwargs['xlim'].split(',')[0])
     kwargs['xmax'] = float(kwargs['xlim'].split(',')[1])
@@ -238,6 +240,9 @@ def animate(ctx, **kwargs):
   setFigure = False
   minSize = np.NAN
 
+  
+  
+
   if kwargs['grouptags']:
     for tag in data.tagIterator(kwargs['use']):
       numDatasets = int(data.getNumDatasets(tag=tag))
@@ -285,17 +290,21 @@ def animate(ctx, **kwargs):
     #end
   elif kwargs['amr']:
 
-    kwargs['amr'] = False
-    
-    tagList = np.array(list(data.tagIterator()))
-    tag_idx = np.argsort(tagList.astype(float))
-    sortedTagList = tagList[tag_idx]
+    frame_list = np.array([])
+    for dat in data.iterator():
+      if not np.isin(dat.ctx['frame'], frame_list):
+        frame_list = np.append(frame_list, dat.ctx['frame'])
+    frame_idx = np.argsort(frame_list)
+    sorted_frame_list = frame_list[frame_idx]
 
     dataList = []
-    for tag in sortedTagList:
-      dataList.append(list(data.iterator(tag=tag)))
-    #end
+    for frame in sorted_frame_list:
+      frameDataList = [dat for dat in data.iterator() if dat.ctx['frame'] == frame]
+      dataList.append(frameDataList)
+    
     figs.append(plt.figure(figsize=figsize))
+    if not kwargs['color']:
+      kwargs['color'] = 'tab:blue'
     if not kwargs['saveframes']:
       anims.append(FuncAnimation(figs[-1], _update,
                                  int(np.nanmin((minSize,len(dataList)))),

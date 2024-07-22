@@ -61,9 +61,9 @@ def _crush(s): # Temp function used as a sorting key
               help='Allows to specify the Adios variable name (default is \'CartGridField\')')
 @click.option('--load/--no-load', default=True,
               help="Specify if data should be loaded.")
+@click.option('--amr', is_flag=True)
 @click.pass_context
 def load(ctx, **kwargs):
-  verb_print(ctx, 'Starting load')
   data = ctx.obj['data']
 
   idx = ctx.obj['inDataStringsLoaded']
@@ -134,8 +134,21 @@ def load(ctx, **kwargs):
     varNames = varNames[0].split(',')
   #end
 
+  if kwargs['amr']:
+    short_file = min(files, key=len)
+    num_frame_idx = np.inf
+    for i in range(len(files)):
+        for j in range(len(short_file)):
+            if short_file[j] != files[i][j] and j < num_frame_idx:
+                num_frame_idx = j
+    frame_list = np.array([])
+    for f in files:
+      f = f.split('.gkyl')[0]
+      frame = f[num_frame_idx:].split('_')[0]
+      frame_list = np.append(frame_list, frame)
+
   for var in varNames:
-    for fn in files:
+    for i, fn in enumerate(files):
       try:
         dat = GData(file_name = fn, tag = kwargs['tag'],
                     comp_grid = ctx.obj['compgrid'],
@@ -152,6 +165,8 @@ def load(ctx, **kwargs):
           dg = GInterpModal(dat, 0, 'ms')
           dg.interpolateGrid(overwrite=True)
         #end
+        if kwargs['amr']:
+          dat.ctx['frame'] = int(frame_list[i])
         data.add(dat)
       except NameError as e:
         ctx.fail(click.style(
