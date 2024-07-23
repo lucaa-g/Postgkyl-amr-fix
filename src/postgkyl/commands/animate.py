@@ -12,6 +12,14 @@ def _update(i, data, fig, kwargs):
   fig.clear()
   kwargs['figure'] = fig
 
+  if kwargs['amr'] and kwargs['float']:
+    vmin, vmax, num_dims = globalrange(data[i], kwargs)
+    if num_dims == 1:
+      kwargs['ymin'] = vmin
+      kwargs['ymax'] = vmax
+    else:
+      kwargs['zmin'] = vmin
+      kwargs['zmax'] = vmax
 
   for dat in data[i]:
     kwargs['title'] = ''
@@ -22,7 +30,7 @@ def _update(i, data, fig, kwargs):
       if dat.ctx['time'] is not None:
         kwargs['title'] = kwargs['title'] + 'T: {:.4e}'.format(dat.ctx['time'])
       #end
-    #end
+    #end   
     if kwargs['arg'] is not None:
       im = gplot(dat, kwargs['arg'], **kwargs)
     else:
@@ -31,6 +39,37 @@ def _update(i, data, fig, kwargs):
       
   return(im)
 #end
+
+
+def globalrange(data, kwargs):
+  vmin = float('inf')
+  vmax = float('-inf')
+  v_extrema = np.array([])
+  for dat in data:
+    num_dims = dat.get_num_dims()
+    if num_dims == 1:
+      val = dat.get_values()*kwargs['yscale']
+    else:
+      val = dat.get_values()*kwargs['zscale']
+    #end
+    if vmin > np.nanmin(val):
+      vmin = np.nanmin(val)
+    if vmax < np.nanmax(val):
+      vmax = np.nanmax(val)
+    #end
+    v_extrema = np.append(v_extrema, np.nanmin(val))
+    v_extrema = np.append(v_extrema, np.nanmax(val))
+  v_extrema = np.sort(v_extrema)
+  if kwargs['cutoffglobalrange']:
+    boundary = 100 * (1 - kwargs['cutoffglobalrange']) / 2
+    vmax = np.percentile(v_extrema, 100 - boundary)
+    vmin = np.percentile(v_extrema, boundary)
+    return vmin, vmax, num_dims
+  else:
+    return vmin, vmax, num_dims
+  
+
+
 
 @click.command()
 @click.option('--use', '-u', default=None,
@@ -187,31 +226,10 @@ def animate(ctx, **kwargs):
     kwargs['zmax'] = float(kwargs['zlim'].split(',')[1])
   #end
 
-  if not kwargs['float']:
-    vmin = float('inf')
-    vmax = float('-inf')
-    v_extrema = np.array([])
-    for dat in data.iterator(kwargs['use']):
-      num_dims = dat.get_num_dims()
-      if num_dims == 1:
-        val = dat.get_values()*kwargs['yscale']
-      else:
-        val = dat.get_values()*kwargs['zscale']
-      #end
-      if vmin > np.nanmin(val):
-        vmin = np.nanmin(val)
-      if vmax < np.nanmax(val):
-        vmax = np.nanmax(val)
-      #end
-      v_extrema = np.append(v_extrema, np.nanmin(val))
-      v_extrema = np.append(v_extrema, np.nanmax(val))
-      if kwargs['cutoffglobalrange']:
-        boundary = 100 * (1 - kwargs['cutoffglobalrange']) / 2
-        vmax = np.percentile(v_extrema, 100 - boundary)
-        vmin = np.percentile(v_extrema, boundary)
-      #end
-    #end
+  
 
+  if not kwargs['float']:
+    vmin, vmax, num_dims = globalrange(data.iterator(kwargs['use']), kwargs)
     if num_dims == 1:
       if kwargs['ymin'] is None:
         kwargs['ymin'] = vmin
@@ -225,9 +243,7 @@ def animate(ctx, **kwargs):
       #end
       if kwargs['zmax'] is None:
         kwargs['zmax'] = vmax
-      #end
-    #end
-  #end
+    
 
   anims = []
   figs = []
