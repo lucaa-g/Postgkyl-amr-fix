@@ -157,8 +157,10 @@ def _update(i, data, fig, kwargs):
               help="Save individual frames as PNGS instead of an animation")
 @click.option('--figsize',
               help="Comma-separated values for x and y size.")
-@click.option('--amr', is_flag=True)
-@click.option('--nocolorbar', is_flag=True)
+@click.option('--amr', is_flag=True,
+              help="Plots amr blocks from each frame together")
+@click.option('--colorbar/--no-colorbar', default=True,
+              help="Turn colorbar for 2D plots ON and OFF (default: ON), OFF improves animation fps/performance")
 @click.pass_context
 def animate(ctx, **kwargs):
   r"""Animate the actively loaded dataset and show resulting plots in a
@@ -325,7 +327,7 @@ def animate(ctx, **kwargs):
     #end
     
     figs.append(plt.figure(figsize=figsize))
-    if (not kwargs['color'] and dataList[0][0].get_num_dims() == 1) or (kwargs['nocolorbar'] and dataList[0][0].get_num_dims() == 2):
+    if (not kwargs['color'] and dataList[0][0].get_num_dims() == 1):
       kwargs['color'] = 'tab:blue'
     #end
     if not kwargs['saveframes']:
