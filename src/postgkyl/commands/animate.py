@@ -7,13 +7,14 @@ import click
 import postgkyl.output.plot as gplot
 import postgkyl.data.select as select
 from postgkyl.commands.util import verb_print
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def _update(i, data, fig, kwargs):
+def _update(frame, data, fig, kwargs):
   fig.clear()
   kwargs['figure'] = fig
 
   if kwargs['amr'] and kwargs['float']:
-    vmin, vmax, num_dims = globalrange(data[i], kwargs)
+    vmin, vmax, num_dims = globalrange(data[frame], kwargs)
     if num_dims == 1:
       kwargs['ymin'] = vmin
       kwargs['ymax'] = vmax
@@ -21,7 +22,7 @@ def _update(i, data, fig, kwargs):
       kwargs['zmin'] = vmin
       kwargs['zmax'] = vmax
 
-  for dat in data[i]:
+  for i, dat in enumerate(data[frame]):
     kwargs['title'] = ''
     if not kwargs['notitle']:
       if dat.ctx['frame'] is not None:
@@ -30,13 +31,23 @@ def _update(i, data, fig, kwargs):
       if dat.ctx['time'] is not None:
         kwargs['title'] = kwargs['title'] + 'T: {:.4e}'.format(dat.ctx['time'])
       #end
-    #end   
-    if kwargs['arg'] is not None:
-      im = gplot(dat, kwargs['arg'], **kwargs)
-    else:
-      im = gplot(dat, **kwargs)
     #end
-      
+        
+    if i == 0: #first block determines colorbar (drastically increases efficiency)
+      if kwargs['arg'] is not None:
+        im = gplot(dat, kwargs['arg'], **kwargs)
+      else:
+        im = gplot(dat, **kwargs)
+      #end
+    else:
+      kwargs_ncb = kwargs.copy()
+      kwargs_ncb['colorbar'] = False
+      if kwargs['arg'] is not None:
+        im = gplot(dat, kwargs['arg'], **kwargs_ncb)
+      else:
+        im = gplot(dat, **kwargs_ncb)
+      #end
+    #end
   return(im)
 #end
 

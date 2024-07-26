@@ -135,7 +135,7 @@ def load(ctx, **kwargs):
 
 
   for var in varNames:
-    for i, fn in enumerate(files):
+    for fn in files:
       try:
         dat = GData(file_name = fn, tag = kwargs['tag'],
                     comp_grid = ctx.obj['compgrid'],
