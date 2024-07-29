@@ -78,8 +78,6 @@ def globalrange(data, kwargs):
     return vmin, vmax, num_dims
   else:
     return vmin, vmax, num_dims
-  
-
 
 
 @click.command()
@@ -239,7 +237,7 @@ def animate(ctx, **kwargs):
 
   
 
-  if not kwargs['float']:
+  if not kwargs['float'] and not kwargs['grouptags']:
     vmin, vmax, num_dims = globalrange(data.iterator(kwargs['use']), kwargs)
     if num_dims == 1:
       if kwargs['ymin'] is None:
@@ -266,11 +264,9 @@ def animate(ctx, **kwargs):
                int(kwargs['figsize'].split(',')[1]))
   #end
 
-  #tagIterator = list(data.tagIterator(kwargs['use']))
   setFigure = False
   minSize = np.NAN
-
-  
+  yset = False
   
 
   if kwargs['grouptags']:
@@ -285,8 +281,19 @@ def animate(ctx, **kwargs):
     figNum = int(0)
 
     for tag in tagIterator:
+      vmin, vmax, num_dims = globalrange(data.iterator(tag), kwargs)
+      if num_dims == 1:
+        kwargs['ymin'] = vmin
+        kwargs['ymax'] = vmax
+        yset = True
+      else:
+        if yset: #so that ymin,ymax of 1d anim don't affect 2d anim
+          kwargs['ymin'] = None
+          kwargs['ymax'] = None
+        kwargs['zmin'] = vmin
+        kwargs['zmax'] = vmax
       dataList = []
-      for dat in data.iterator(tag=tag):
+      for dat in data.iterator(tag):
         dataList.append([dat])
       #end
       figs.append(plt.figure(figNum, figsize=figsize))
@@ -321,7 +328,7 @@ def animate(ctx, **kwargs):
     #end
   elif kwargs['amr']:
 
-    files = [dat._file_name for dat in data.iterator()]
+    files = [dat._file_name for dat in data.iterator(kwargs['use'])]
     
     short_file = min(files, key=len)
     num_frame_idx = np.inf
@@ -341,15 +348,16 @@ def animate(ctx, **kwargs):
     #end
     
 
-    for i, dat in data.iterator(enum=True):
+    for i, dat in data.iterator(kwargs['use'], enum=True):
       dat.ctx['frame'] = frame_list[i]
     #end
     sorted_frame_list = np.unique(np.sort(frame_list))
+
     
 
     dataList = []
     for frame in sorted_frame_list:
-      frameDataList = [dat for dat in data.iterator() if dat.ctx['frame'] == frame]
+      frameDataList = [dat for dat in data.iterator(kwargs['use']) if dat.ctx['frame'] == frame]
       dataList.append(frameDataList)
     #end
     
@@ -381,8 +389,9 @@ def animate(ctx, **kwargs):
     #end
       
   else:
+
     dataList = []
-    for dat in data.iterator(tag=kwargs['use']):
+    for dat in data.iterator(kwargs['use']):
       dataList.append([dat])
     if setFigure:
       figs.append(plt.figure(figNum, figsize=figsize))
