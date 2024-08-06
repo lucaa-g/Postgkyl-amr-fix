@@ -36,7 +36,6 @@ from .relchange import relchange
 from .select import select
 from .status import activate
 from .status import deactivate
-from .stitch import stitch
 from .style import style
 from .tenmoment import tenmoment
 from .trajectory import trajectory

@@ -1,6 +1,7 @@
 import numpy as np
 import shutil
 from typing import Union
+from collections import deque
 
 from postgkyl.data.read_gkyl import Read_gkyl
 from postgkyl.data.read_gkyl_adios import Read_gkyl_adios
@@ -103,6 +104,11 @@ class GData(object):
     self._mapc2p_name = mapc2p_name
     self._mapc2p_vel_name = mapc2p_vel_name
     self._color = None
+    
+    self._neighbors = {}
+    for dim in [0,1]:
+      self._neighbors[(dim, True)] = None
+      self._neighbors[(dim, False)] = None
 
     self._status = True
 
@@ -292,6 +298,15 @@ class GData(object):
     self.set_grid(grid)
     return self
   #end
+
+  def neighbors(self, dataspace):
+    num_dims = self.get_num_dims()
+    for data in dataspace:
+      for dim in range(num_dims):
+        if self.get_grid()[dim][0] == data.get_grid()[dim][-1] and self.get_grid()[not dim][0] == data.get_grid()[not dim][0]:
+          self._neighbors[(dim, False)] = data
+        elif self.get_grid()[dim][-1] == data.get_grid()[dim][0] and self.get_grid()[not dim][0] == data.get_grid()[not dim][0]:
+          self._neighbors[(dim, True)] = data
 
 
   #---- Info -----------------------------------------------------------

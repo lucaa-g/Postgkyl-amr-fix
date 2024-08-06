@@ -22,6 +22,7 @@ def select(data, comp=None, overwrite=False,
   grid = list(grid)  # copy the grid
   values = data.get_values()
   num_dims = data.get_num_dims()
+  bounds = data.get_bounds()
   values_idx = [slice(0, values.shape[d]) for d in range(num_dims+1)]
   uniform_grid = (len(grid[0].shape) == 1)
   if not uniform_grid:
@@ -31,6 +32,10 @@ def select(data, comp=None, overwrite=False,
   # Loop for coordinates
   for d, z in enumerate(zs):
     if d < num_dims and z is not None:
+      dat_range = bounds[1][d] - bounds[0][d]
+      if '.' in z:
+        if bounds[1][d] + 0.25 * dat_range < float(z) or bounds[0][d]  - 0.25 * dat_range > float(z):
+          raise TypeError('The coordinate select is outside of the data boundaries')
       if uniform_grid:
         len_grid = grid[d].shape[0]
       else:
