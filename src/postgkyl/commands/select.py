@@ -26,7 +26,8 @@ from postgkyl.commands.util import verb_print
               help='Optional tag for the resulting array')
 @click.option('--label', '-l',
               help="Custom label for the result")
-@click.option('--multib', '-mb', is_flag=True)
+@click.option('--multib', '-mb', is_flag=True,
+              help="Necessary parameter for multiblock lineouts for z0 or z1 lineouts")
 @click.pass_context
 def select(ctx, **kwargs):
   r"""Subselect data from the active dataset(s). This command allows, for
@@ -40,9 +41,11 @@ def select(ctx, **kwargs):
 
 
   if kwargs['multib']:
+    #establish lower bounds for x and y axis
     botlef_point = []
     for dim in [0,1]:
       botlef_point.append(min([dat.get_bounds()[0][dim] for dat in data.iterator(kwargs['use'])]))
+    #find starting block for lineout coordinate
     if kwargs['z0'] is not None:
       for dat in data.iterator(kwargs['use']):
         if dat.get_bounds()[0][0] <= float(kwargs['z0']) <= dat.get_bounds()[1][0] and dat.get_bounds()[0][1] == botlef_point[1]:
@@ -51,10 +54,13 @@ def select(ctx, **kwargs):
       for dat in data.iterator(kwargs['use']):
         if dat.get_bounds()[0][1] <= float(kwargs['z1']) <= dat.get_bounds()[1][1] and dat.get_bounds()[0][0] == botlef_point[0]:
           block = dat
+    #find neighboring blocks of starting block
     block.neighbors(data.iterator(kwargs['use']))
 
     
     value_list = []
+
+    #creates new grid and value list containing data from blocks which contain specified z0 coordinate
     if kwargs['z0'] is not None:
       grid, values = postgkyl.data.select(block,
                                           z0=kwargs['z0'],
@@ -75,7 +81,7 @@ def select(ctx, **kwargs):
       value_list = np.array([value_list])
 
 
-        
+    #same but for z1 coordinate
     if kwargs['z1'] is not None:
       grid, values = postgkyl.data.select(block,
                                             z1=kwargs['z1'],
@@ -99,8 +105,9 @@ def select(ctx, **kwargs):
 
 
     
-    data.deactivateAll()
-    
+    data.deactivateAll(kwargs['use'])
+
+    #create new gdata instance and push new stitched grid and values
     out = GData(tag=kwargs['tag'],
                 label=kwargs['label'],
                 comp_grid=ctx.obj['compgrid'])
@@ -123,8 +130,8 @@ def select(ctx, **kwargs):
                                             z4=kwargs['z4'],
                                             z5=kwargs['z5'],
                                             comp=kwargs['comp'])
-        click.echo(grid)
         out.push(grid, values)
+        data.deactivateAll(kwargs['use'])
         data.add(out)
 
         
