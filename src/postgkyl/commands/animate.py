@@ -6,7 +6,7 @@ import click
 
 import postgkyl.output.plot as gplot
 import postgkyl.data.select as select
-from postgkyl.commands.util import verb_print
+from postgkyl.commands.util import verb_print, set_frame
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def _update(frame, data, fig, kwargs):
@@ -252,6 +252,7 @@ def animate(ctx, **kwargs):
       #end
       if kwargs['zmax'] is None:
         kwargs['zmax'] = vmax
+
     
 
   anims = []
@@ -328,33 +329,8 @@ def animate(ctx, **kwargs):
     #end
   elif kwargs['amr']:
 
-    files = [dat._file_name for dat in data.iterator(kwargs['use'])]
+    sorted_frame_list = set_frame(ctx)
     
-    short_file = min(files, key=len)
-    num_frame_idx = np.inf
-    for i in range(len(files)):
-        for j in range(len(short_file)):
-            if short_file[j] != files[i][j] and j < num_frame_idx:
-                num_frame_idx = j
-            #end
-        #end
-    #end
-                
-    frame_list = []
-    for f in files:
-      f = f.split('.gkyl')[0]
-      frame = f[num_frame_idx:].split('_')[0]
-      frame_list.append(int(frame))
-    #end
-    
-
-    for i, dat in data.iterator(kwargs['use'], enum=True):
-      dat.ctx['frame'] = frame_list[i]
-    #end
-    sorted_frame_list = np.unique(np.sort(frame_list))
-
-    
-
     dataList = []
     for frame in sorted_frame_list:
       frameDataList = [dat for dat in data.iterator(kwargs['use']) if dat.ctx['frame'] == frame]
