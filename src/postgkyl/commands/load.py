@@ -63,7 +63,6 @@ def _crush(s): # Temp function used as a sorting key
               help="Specify if data should be loaded.")
 @click.pass_context
 def load(ctx, **kwargs):
-  verb_print(ctx, 'Starting load')
   data = ctx.obj['data']
 
   idx = ctx.obj['inDataStringsLoaded']
@@ -133,6 +132,7 @@ def load(ctx, **kwargs):
   if len(varNames) == 1:
     varNames = varNames[0].split(',')
   #end
+
 
   for var in varNames:
     for fn in files:
