@@ -1,7 +1,6 @@
 import numpy as np
 import shutil
 from typing import Union
-from collections import deque
 
 from postgkyl.data.read_gkyl import Read_gkyl
 from postgkyl.data.read_gkyl_adios import Read_gkyl_adios

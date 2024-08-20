@@ -7,7 +7,6 @@ import click
 import postgkyl.output.plot as gplot
 import postgkyl.data.select as select
 from postgkyl.commands.util import verb_print, set_frame
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def _update(frame, data, fig, kwargs):
   fig.clear()

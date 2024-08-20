@@ -23,7 +23,6 @@ from .interpolate import interpolate
 from .laguerre_compose import laguerrecompose
 from .listoutputs import listoutputs
 from .load import load
-from .loadgroup import loadgroup
 from .magsq import magsq
 from .mask import mask
 from .mhd import mhd
