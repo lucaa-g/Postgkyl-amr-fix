@@ -8,10 +8,12 @@ import postgkyl.output.plot as gplot
 import postgkyl.data.select as select
 from postgkyl.commands.util import verb_print, set_frame
 
+
 def _update(frame, data, fig, kwargs):
   fig.clear()
   kwargs['figure'] = fig
 
+  #global range function is called every frame to set scale limits for frame plot
   if kwargs['amr'] and kwargs['float']:
     vmin, vmax, num_dims = globalrange(data[frame], kwargs)
     if num_dims == 1:
@@ -21,6 +23,7 @@ def _update(frame, data, fig, kwargs):
       kwargs['zmin'] = vmin
       kwargs['zmax'] = vmax
 
+  #main plotting loop for each block
   for i, dat in enumerate(data[frame]):
     kwargs['title'] = ''
     if not kwargs['notitle']:
@@ -50,7 +53,8 @@ def _update(frame, data, fig, kwargs):
   return(im)
 #end
 
-
+#Finds global minima and maxima for all inputed data objects
+#also incorporates cutoffglobalrange
 def globalrange(data, kwargs):
   vmin = float('inf')
   vmax = float('-inf')
@@ -270,6 +274,7 @@ def animate(ctx, **kwargs):
   
 
   if kwargs['grouptags']:
+    #runs animation for each tag
     for tag in data.tagIterator(kwargs['use']):
       numDatasets = int(data.getNumDatasets(tag=tag))
       minSize = int(np.nanmin((minSize, numDatasets)))
@@ -280,6 +285,7 @@ def animate(ctx, **kwargs):
     setFigure = True
     figNum = int(0)
 
+    #sets scale for each tag animation
     for tag in tagIterator:
       vmin, vmax, num_dims = globalrange(data.iterator(tag), kwargs)
       if num_dims == 1:
@@ -292,6 +298,7 @@ def animate(ctx, **kwargs):
           kwargs['ymax'] = None
         kwargs['zmin'] = vmin
         kwargs['zmax'] = vmax
+      #creating main list of lists (non-multiblock case)
       dataList = []
       for dat in data.iterator(tag):
         dataList.append([dat])
@@ -326,17 +333,22 @@ def animate(ctx, **kwargs):
         kwargs['show'] = False # do not show in this case
       #end
     #end
+  #animation code for multiblock cases
   elif kwargs['amr']:
 
+    #set ctx frames for all data objects
     sorted_frame_list = set_frame(ctx)
-    
+
+    #create main list of lists (multiblock case)
     dataList = []
+    #organize data objects so each interior list includes blocks from one frame
     for frame in sorted_frame_list:
       frameDataList = [dat for dat in data.iterator(kwargs['use']) if dat.ctx['frame'] == frame]
       dataList.append(frameDataList)
     #end
     
     figs.append(plt.figure(figsize=figsize))
+    #makes default color blue in 1D cases, this prevents blocks from having different colors
     if (not kwargs['color'] and dataList[0][0].get_num_dims() == 1):
       kwargs['color'] = 'tab:blue'
     #end
@@ -365,6 +377,7 @@ def animate(ctx, **kwargs):
       
   else:
 
+    #create main list of lists (non-multiblock case)
     dataList = []
     for dat in data.iterator(kwargs['use']):
       dataList.append([dat])

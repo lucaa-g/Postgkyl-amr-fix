@@ -198,6 +198,7 @@ def plot(ctx, **kwargs):
     dataset_fignum = True
   #end
 
+  #automatically sets correct scale for multiblock cases
   if kwargs['amr'] and kwargs['cutoffglobalrange'] is None:
     kwargs['globalrange'] = True
   #end
@@ -248,6 +249,7 @@ def plot(ctx, **kwargs):
     if dataset_fignum and not kwargs['amr']:
       kwargs['figure'] = int(i)
     #end
+    #puts all blocks on the same figure
     if kwargs['amr']:
       kwargs['figure'] = 0
     #end

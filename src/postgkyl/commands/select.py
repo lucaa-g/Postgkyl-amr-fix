@@ -42,9 +42,13 @@ def select(ctx, **kwargs):
   data = ctx.obj['data']
 
 
+  #multiblock cases
   if kwargs['multib']:
 
+    #set ctx frames
     frame_list = set_frame(ctx)
+    #creates list of lists with blocks per frame if multiframe parameter
+    #if not, then only one frame with all blocks
     if kwargs['multiframe']:
       dataList = []
       for frame in frame_list:
